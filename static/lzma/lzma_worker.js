@@ -1,3 +1,4 @@
+// Source: https://raw.githubusercontent.com/LZMA-JS/LZMA-JS/master/src/lzma_worker.js
 /// © 2015 Nathan Rugg <nmrugg@gmail.com> | MIT
 /// See LICENSE for more details.
 

@@ -1,3 +1,4 @@
+// Source: https://raw.githubusercontent.com/LZMA-JS/LZMA-JS/master/src/lzma.js
 //! © 2015 Nathan Rugg <nmrugg@gmail.com> | MIT
 /// See LICENSE for more details.
 
@@ -87,7 +88,7 @@ if (typeof Worker === "undefined" || (typeof location !== "undefined" && locatio
           callback_obj = {},
 
           ///NOTE: Node.js needs something like "./" or "../" at the beginning.
-          lzma_worker = new Worker(lzma_path || "./lzma_worker-min.js");
+          lzma_worker = new Worker(lzma_path || "lzma/lzma_worker.js");
 
       lzma_worker.onmessage = function onmessage(e) {
           if (e.data.action === action_progress) {
