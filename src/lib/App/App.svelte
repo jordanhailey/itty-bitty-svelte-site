@@ -4,7 +4,8 @@
   };
 </script>
 <script lang="ts">
-  import Editor from "../Editor.svelte";
+  import Editor from "$lib/Editor.svelte";
+  import {connectLZMAWorker} from "./lzma-worker-interface"
   export let state = undefined as AppStateType;
   $:editorConfig= undefined as Record<string,unknown>;
 
@@ -13,6 +14,17 @@
    * @param MountedState Action parameters defaulting to the state object derived from the path route handler
    */
   function appContextWrapper(node,MountedState) {
+    const lzma = connectLZMAWorker(window);
+    const compressionTestInput = "Hello World";
+    lzma.compress(compressionTestInput,6,(cRes,cErr)=>{
+      console.log("Compression input:",compressionTestInput)
+      if (cErr) console.error(cErr)
+      console.log({compressionOutput:cRes})
+      lzma.decompress(cRes,(dRes,dErr)=>{
+        if (dErr) console.error(dErr)
+        console.log({decompressionOutput:dRes})
+      })
+    })
     let {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
     if (!hashToDecode?.substr(1)) console.log("Default State",{node,appMode})
     else console.log("TODO: Inflate Fragment",{node,appMode})
