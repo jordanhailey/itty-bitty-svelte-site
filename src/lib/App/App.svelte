@@ -6,7 +6,7 @@
 <script lang="ts">
   import Editor from "../Editor.svelte";
   export let state = undefined as AppStateType;
-  $:renderedEditor = undefined;
+  $:editorConfig= undefined as Record<string,unknown>;
 
   /**
    * @param node HTMLElement chained with the [`use:action` Element directive](https://svelte.dev/docs#use_action)
@@ -16,33 +16,43 @@
     let {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
     if (!hashToDecode?.substr(1)) console.log("Default State",{node,appMode})
     else console.log("TODO: Inflate Fragment",{node,appMode})
-    const editorCfg = {
+    editorConfig = {
       mode:appMode?.replace(/\?|[/]/g,""),
     }
-    renderEditor(editorCfg)
   }
 
   /**
    * @param config Editor configuration
    */
-  function renderEditor(config=undefined) {
-    console.log("Rendering Editor")
-    return new Promise((resolve,_)=>{
+  function renderEditor(cfg) {
+    /**
+     * TODO: Future idea - consider making the app default to a form so
+     * that it can *somewhat* work without JS enabled. In which case this function should then
+     * call to destroy / disable the form and mount the reactive editor in it's place.
+    */
+    return new Promise((resolve,reject)=>{
       try {
-        if (config) renderedEditor = config
+        // Only allow objects through to Editor
+        if (cfg == null || cfg == undefined || Array.isArray(cfg) || Object.keys(cfg).length===0) throw "Config Error";
+        resolve(cfg)
       } catch (err) {
-        console.error(err)
-      } finally {
-        resolve(config)
+        // reject(err)
+        resolve({})
       }
     })
   }
 </script>
 <div use:appContextWrapper={state} id="app-container">
   App Container
-  {#if renderedEditor}
-  <Editor configuration={renderedEditor}/>
+  {#if editorConfig}
+    {#await renderEditor(editorConfig)}
+    Loading Editor...
+    {:then cfg}
+    <Editor configuration={cfg}/>
+    {:catch error}
+    {error}
+    {/await}
   {:else}
-  Rendering Editor...
+    Building Config...
   {/if}
 </div>
