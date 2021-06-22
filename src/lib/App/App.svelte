@@ -1,18 +1,23 @@
+<script lang="ts" context="module">
+  type AppStateType = {
+    inflate?: Record<string,unknown>,
+  };
+</script>
 <script lang="ts">
   import Editor from "../Editor.svelte";
-  export let state = undefined;
+  export let state = undefined as AppStateType;
   $:renderedEditor = undefined;
 
   /**
    * @param node HTMLElement chained with the [`use:action` Element directive](https://svelte.dev/docs#use_action)
    * @param MountedState Action parameters defaulting to the state object derived from the path route handler
    */
-  function appContextWrapper(node,MountedState=state) {
+  function appContextWrapper(node,MountedState) {
     let {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
-    if (!hashToDecode.substr(1)) console.log("Default State",{node,appMode})
+    if (!hashToDecode?.substr(1)) console.log("Default State",{node,appMode})
     else console.log("TODO: Inflate Fragment",{node,appMode})
     const editorCfg = {
-      mode:appMode.replace(/\?|[/]/g,""),
+      mode:appMode?.replace(/\?|[/]/g,""),
     }
     renderEditor(editorCfg)
   }
