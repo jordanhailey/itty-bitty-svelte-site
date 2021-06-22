@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import Editor from "./Editor.svelte";
   export let state = undefined;
   $:renderedEditor = undefined;
