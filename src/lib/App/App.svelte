@@ -8,25 +8,45 @@
   import {connectLZMAWorker} from "./lzma-worker-interface"
   export let state = undefined as AppStateType;
   $:editorConfig= undefined as Record<string,unknown>;
+  let compress:Function,
+    decompress:Function,
+    worker:{terminate?:VoidFunction,onmessage?:VoidFunction,postmessage?:VoidFunction};
 
   /**
    * @param node HTMLElement chained with the [`use:action` Element directive](https://svelte.dev/docs#use_action)
    * @param MountedState Action parameters defaulting to the state object derived from the path route handler
    */
   function appContextWrapper(node,MountedState) {
-    const lzma = connectLZMAWorker(window);
-    const compressionTestInput = "Hello World";
-    console.log("Compression input:",compressionTestInput)
-    lzma.compress(compressionTestInput)
-      .then(cRes=>{console.log({compressionOutput:cRes});return lzma.decompress(cRes)})
-      .then(dRes=>console.log({decompressionOutput:dRes}))
-      .catch(err=>console.error(err))
-    let {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
-    if (!hashToDecode?.substr(1)) console.log("Default State",{node,appMode})
-    else console.log("TODO: Inflate Fragment",{node,appMode})
-    editorConfig = {
-      mode:appMode?.replace(/\?|[/]/g,""),
+    const {compress:c,decompress:d,worker:w} = connectLZMAWorker(window);
+    [compress,decompress,worker] = [c,d,w]; // hoisting destructured variables to component's global variables
+    const {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
+    const editorCfg = {
+      state:{
+        mode:appMode?.replace(/\?|[/]/g,""),
+      },
+      compressString: async (str:string)=>{
+        const compressionOutput = await compress(str)
+          .then((output:string)=>(output))
+          .catch((err:ErrorEvent) =>(console.error(err)))
+        if (!compressionOutput) throw `Something went wrong compressing ${str}`
+        return compressionOutput
+      },
     }
+    if (hashToDecode?.substr(1)) {
+      let len = "/?".length, idx = hashToDecode?.indexOf("/?"),
+        base64Fragment = hashToDecode?.substr(idx>=0 ? idx+len : 0);
+      if (base64Fragment) {
+        decompress(base64Fragment)
+          .then(decodedStr => {
+            editorCfg.state = Object.assign(editorCfg.state,{
+                decoded:decodedStr,
+                encoded:base64Fragment
+            })
+          })
+          .catch(err=>{console.error(err)})
+      }
+    }
+    editorConfig = editorCfg;
   }
 
   /**
