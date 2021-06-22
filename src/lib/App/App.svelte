@@ -16,15 +16,11 @@
   function appContextWrapper(node,MountedState) {
     const lzma = connectLZMAWorker(window);
     const compressionTestInput = "Hello World";
-    lzma.compress(compressionTestInput,6,(cRes,cErr)=>{
-      console.log("Compression input:",compressionTestInput)
-      if (cErr) console.error(cErr)
-      console.log({compressionOutput:cRes})
-      lzma.decompress(cRes,(dRes,dErr)=>{
-        if (dErr) console.error(dErr)
-        console.log({decompressionOutput:dRes})
-      })
-    })
+    console.log("Compression input:",compressionTestInput)
+    lzma.compress(compressionTestInput)
+      .then(cRes=>{console.log({compressionOutput:cRes});return lzma.decompress(cRes)})
+      .then(dRes=>console.log({decompressionOutput:dRes}))
+      .catch(err=>console.error(err))
     let {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
     if (!hashToDecode?.substr(1)) console.log("Default State",{node,appMode})
     else console.log("TODO: Inflate Fragment",{node,appMode})
