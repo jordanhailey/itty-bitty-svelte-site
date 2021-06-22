@@ -18,5 +18,4 @@
   import App from "$lib/App.svelte";
   export let loadingCtx = undefined;
 </script>
-/index route
 <App state={loadingCtx}/>
