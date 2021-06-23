@@ -7,7 +7,20 @@
   import Editor from "$lib/Editor.svelte";
   import {connectLZMAWorker} from "./lzma-worker-interface"
   export let state = undefined as AppStateType;
+  import { writable } from "svelte/store";
+  const appMessages = writable([]);
   $:editorConfig= undefined as Record<string,unknown>;
+
+  $: {
+    /**
+     * TODO: Depending on complexity, I may export a function to send messages
+     * directly to appContextWrapper and a handler, similar to the inferface of
+     * plugins like Redux. For now. Just logging the messages is fine.
+    */
+    // Log and dismiss messages as they come in
+    if ($appMessages.length>0) appMessages.update(msgs=>msgs.filter(msg => console.log({appMessage:msg,time:Date.now()})))
+  }
+
   let compress:Function,
     decompress:Function,
     worker:{terminate?:VoidFunction,onmessage?:VoidFunction,postmessage?:VoidFunction};
@@ -24,13 +37,19 @@
       state:{
         mode:appMode?.replace(/\?|[/]/g,""),
       },
-      compressString: async (str:string)=>{
-        const compressionOutput = await compress(str)
-          .then((output:string)=>(output))
-          .catch((err:ErrorEvent) =>(console.error(err)))
-        if (!compressionOutput) throw `Something went wrong compressing ${str}`
-        return compressionOutput
-      },
+      curriedCompressionCaller: (node:HTMLElement) => {
+        let src = node instanceof HTMLElement ? node : undefined;
+        return async function requestStringCompression(str:string) {
+          const compressionOutput = await compress(str)
+            .then((output:string)=>{
+              appMessages.update(s=>[...s,{source:src,CompressionEvent:{output:output,input:str}}]);
+              return output;
+            })
+            .catch((err:ErrorEvent) =>{appMessages.update(s=>[...s,{source:src,CompressionEvent:{error:err,input:str}}])});
+          if (!compressionOutput) throw `Something went wrong compressing ${str}`;
+          return compressionOutput;
+        }
+      }
     }
     if (hashToDecode?.substr(1)) {
       let len = "/?".length, idx = hashToDecode?.indexOf("/?"),
