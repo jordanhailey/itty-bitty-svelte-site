@@ -1,5 +1,7 @@
 {
-  "name": "~TODO~",
+  "name": "itty-bitty-svelte-site",
+  "description": "An app inspired by https://itty.bitty.site and https://carbon.now.sh/",
+  "author": "@jordanhailey",
   "version": "0.0.1",
   "scripts": {
     "dev": "svelte-kit dev",
