@@ -33,7 +33,7 @@
     const {compress:c,decompress:d,worker:w} = connectLZMAWorker(window);
     [compress,decompress,worker] = [c,d,w]; // hoisting destructured variables to component's global variables
     const {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
-    const editorCfg = {
+    let eCfg = {
       state:{
         mode:appMode?.replace(/\?|[/]/g,""),
       },
@@ -51,21 +51,30 @@
         }
       }
     }
-    if (hashToDecode?.substr(1)) {
+    if (!hashToDecode?.substr(1)) editorConfig = eCfg;
+    else {
       let len = "/?".length, idx = hashToDecode?.indexOf("/?"),
         base64Fragment = hashToDecode?.substr(idx>=0 ? idx+len : 0);
       if (base64Fragment) {
         decompress(base64Fragment)
-          .then(decodedStr => {
-            editorCfg.state = Object.assign(editorCfg.state,{
-                decoded:decodedStr,
-                encoded:base64Fragment
-            })
-          })
-          .catch(err=>{console.error(err)})
+        .then(decodedStr => {
+          try {
+            const updatedStateObj = {
+                state: {
+                  ...eCfg.state,
+                  decoded:decodedStr,
+                  encoded:base64Fragment
+                }
+              }
+            eCfg = Object.assign(eCfg,updatedStateObj);
+          } catch (error) {
+            console.error(error)
+          } finally {
+            editorConfig = eCfg;
+          }
+        })
       }
     }
-    editorConfig = editorCfg;
   }
 
   /**
