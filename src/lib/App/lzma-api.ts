@@ -1,8 +1,8 @@
-import {compress,decompress} from "./lzma";
-type SyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType) => number[];
+import {compress as syncCompress, decompress as syncDecompress} from "./lzma-min";
+type SyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => number[]|void;
 type AsyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
 type AsyncCompression_I = (str:string) => Promise<string>;
-type SyncDecompressionFnType = (byte_arr:ArrayBufferLike|string) => string;
+type SyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => string|void;
 type AsyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
 type AsyncDecompression_I = (byte_arr:string) => Promise<string>;
 type WorkerFnType = () => Worker;
@@ -25,8 +25,8 @@ class LZMAInstanceGenerator implements LZMA_GENERATOR_I {
   decompress:SyncDecompressionFnType;
   worker:WorkerFnType;
   constructor(path_to_worker:string){
-    this.compress = compress;
-    this.decompress = decompress;
+    this.compress = syncCompress;
+    this.decompress = syncDecompress;
     this.worker = () => {
       let wkr = null;
       try {
@@ -42,13 +42,18 @@ class LZMAInstanceGenerator implements LZMA_GENERATOR_I {
   }
 }
 
-let W = undefined;
+let globalObj = undefined;
+let LZMA_INSTANCE;
 
 export const connectLZMAWorker = ():LZMA_I => {
-  W = window;
-  const LZMA = W.LZMA ? W.LZMA : LZMAInstanceGenerator;
-  const {compress:c,decompress:d,worker:w} = new LZMA("/lzma/lzma_worker.js");
-  const worker = w();
+  globalObj = globalObj ? globalObj : window || global;
+  if (!LZMA_INSTANCE && globalObj.LZMA) {
+    LZMA_INSTANCE = globalObj.LZMA;console.log("LZMA Web Worker connecting")
+  }
+  const API = LZMA_INSTANCE ? LZMA_INSTANCE : LZMAInstanceGenerator;
+  if (!LZMA_INSTANCE) LZMA_INSTANCE = typeof API === "function" ? new API("./lzma_worker.js") : API;
+  const {compress:c,decompress:d,worker:w} = LZMA_INSTANCE;
+  const worker = typeof w === "function" ? w() : w;
   const compress = worker ? compressionCall(c,false) : compressionCall(c,true);
   const decompress = worker ? decompressionCall(d,false) : decompressionCall(d,true);
   return {compress,decompress,worker};
@@ -96,11 +101,11 @@ function fromArrayBufferToBase64(buffer){
   for (let i=0;i<length;i++){
       binaryOut += String.fromCharCode(byte_arr[i]);
   }
-  return W ? W.btoa(binaryOut) : btoa(binaryOut);
+  return globalObj ? globalObj.btoa(binaryOut) : btoa(binaryOut);
 }
 
 function fromBase64ToInt8Array(str){
-  let binary = W ? W.atob(str) : atob(str);
+  let binary = globalObj ? globalObj.atob(str) : atob(str);
   let length = binary.length;
   let buffer = new Int8Array(length);
   for (let i = 0; i < length; i++) {
