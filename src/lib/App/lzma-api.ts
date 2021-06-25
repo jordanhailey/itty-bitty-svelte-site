@@ -1,26 +1,14 @@
 import {compress as syncCompress, decompress as syncDecompress} from "./lzma-min";
-type SyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => number[]|void;
-type AsyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
-type AsyncCompression_I = (str:string) => Promise<string>;
-type SyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => string|void;
-type AsyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
-type AsyncDecompression_I = (byte_arr:string) => Promise<string>;
-type WorkerFnType = () => Worker;
-type ModeType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-type OnFinishType = (res:unknown,err:unknown) => void;
-type OnProgressType = (percentage:number) => void;
-export interface LZMA_I {
-  compress:AsyncCompression_I;
-  decompress:AsyncDecompression_I;
-  worker:WorkerFnType;
-}
-interface LZMA_GENERATOR_I {
-  compress:SyncCompressionFnType;
-  decompress:SyncDecompressionFnType;
-  worker:WorkerFnType;
-}
+let globalObj = undefined,API=undefined;
 
 class LZMAInstanceGenerator implements LZMA_GENERATOR_I {
+  /**
+   * When, for any reason, the static script failed to load and append the LZMA
+   * constructor on the global window object, use this class to build the interface.
+   * This is also used for server-side (de)compression calls.
+   * TODO: Beef this up a bit so that it can retry building the web worker if
+   * class constructor is called when in the browser.
+  */
   compress:SyncCompressionFnType;
   decompress:SyncDecompressionFnType;
   worker:WorkerFnType;
@@ -42,22 +30,25 @@ class LZMAInstanceGenerator implements LZMA_GENERATOR_I {
   }
 }
 
-let globalObj = undefined;
-let LZMA_INSTANCE;
-
 export const connectLZMAWorker = ():LZMA_I => {
   globalObj = globalObj ? globalObj : window || global;
-  if (!LZMA_INSTANCE && globalObj.LZMA) {
-    LZMA_INSTANCE = globalObj.LZMA;console.log("LZMA Web Worker connecting")
-  }
-  const API = LZMA_INSTANCE ? LZMA_INSTANCE : LZMAInstanceGenerator;
-  if (!LZMA_INSTANCE) LZMA_INSTANCE = typeof API === "function" ? new API("./lzma_worker.js") : API;
-  const {compress:c,decompress:d,worker:w} = LZMA_INSTANCE;
+  API = API ? API : globalObj.LZMA ? globalObj.LZMA : LZMAInstanceGenerator;
+  API = typeof API === "function" ? new API("/lzma/lzma_worker.js") : API;
+  const {compress:c,decompress:d,worker:w} = API;
+  // Where web workers are supported, a function will be returned on the worker property, otherwise will be undefined
   const worker = typeof w === "function" ? w() : w;
+  /**
+   * Wrapping the call to (de)compress in a Promise that returns a (de)compressed string.
+   * Where web workers are supported, (de)compression calls are handled there, off the main thread. Before
+   * beginning, or once finished, (de)compressing, some transformation is required (from/to a String/ArrayBufferLike object).
+   * The transformation occurs *on* the main thread. (TODO: consider if they should also be handled off the main thread).
+  */
   const compress = worker ? compressionCall(c,false) : compressionCall(c,true);
   const decompress = worker ? decompressionCall(d,false) : decompressionCall(d,true);
   return {compress,decompress,worker};
 }
+
+// Curried Promises
 
 function compressionCall(compressionFn:SyncCompressionFnType|AsyncCompressionFnType,sync:Boolean) {
   return (str=""):Promise<string> => {
@@ -94,7 +85,10 @@ function decompressionCall(decompressionFn:SyncDecompressionFnType|AsyncDecompre
   }
 }
 
+// Data Transformers
+
 function fromArrayBufferToBase64(buffer){
+  // https://stackoverflow.com/questions/9267899/arraybuffer-to-base64-encoded-string
   let binaryOut = "";
   let byte_arr = new Uint8Array(buffer);
   const length = byte_arr.length;
@@ -105,6 +99,7 @@ function fromArrayBufferToBase64(buffer){
 }
 
 function fromBase64ToInt8Array(str){
+  // https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer/21797381
   let binary = globalObj ? globalObj.atob(str) : atob(str);
   let length = binary.length;
   let buffer = new Int8Array(length);
@@ -161,3 +156,26 @@ function atob(string) {
   }
   return result;
 };
+
+// Types TODO: migrate to types file and export from there
+
+type ModeType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+type OnFinishType = (res:unknown,err:unknown) => void;
+type OnProgressType = (percentage:number) => void;
+type WorkerFnType = () => Worker;
+type SyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => number[]|void;
+type AsyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
+type AsyncCompression_I = (str:string) => Promise<string>;
+type SyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => string|void;
+type AsyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
+type AsyncDecompression_I = (byte_arr:string) => Promise<string>;
+export interface LZMA_I {
+  compress:AsyncCompression_I;
+  decompress:AsyncDecompression_I;
+  worker:WorkerFnType;
+}
+interface LZMA_GENERATOR_I {
+  compress:SyncCompressionFnType;
+  decompress:SyncDecompressionFnType;
+  worker:WorkerFnType;
+}
