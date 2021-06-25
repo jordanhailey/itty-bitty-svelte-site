@@ -8,7 +8,7 @@ const logError = (err,str=input) => {throw {error:err,input:str}}
 
 beforeAll(async ()=>{
   let {compress,decompress} = connectLZMAWorker();
-  // Set random test string
+  // Set random test string https://stackoverflow.com/a/34123752
   let text:string|string[] = [];
   let x = 50 * Math.floor(Math.random() * randomWords.length);
   let wC = x
@@ -17,7 +17,6 @@ beforeAll(async ()=>{
   input = text.join(" ").replace(/ \./g,".")
   expectedCompressed = await compress(input).catch(err=>logError(err))
   expectedDecompressed = await decompress(expectedCompressed).catch(err=>logError(err))
-  console.log({wordCount:wC,inputLength:input.length,compressedLength:expectedCompressed.length})
 })
 
 describe("LZMA functions",()=>{
