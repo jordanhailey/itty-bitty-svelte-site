@@ -1,11 +1,12 @@
 <script lang="ts" context="module">
+  import type {LZMA_I} from "./lzma-api"
   type AppStateType = {
     inflate?: Record<string,unknown>,
   };
 </script>
 <script lang="ts">
   import Editor from "$lib/Editor.svelte";
-  import {connectLZMAWorker} from "./lzma-worker-interface"
+  import {connectLZMAWorker} from "./lzma-api"
   export let state = undefined as AppStateType;
   import { writable } from "svelte/store";
   const appMessages = writable([]);
@@ -21,16 +22,14 @@
     if ($appMessages.length>0) appMessages.update(msgs=>msgs.filter(msg => console.log({appMessage:msg,time:Date.now()})))
   }
 
-  let compress:Function,
-    decompress:Function,
-    worker:{terminate?:VoidFunction,onmessage?:VoidFunction,postmessage?:VoidFunction};
+  let compress:LZMA_I["compress"],decompress:LZMA_I["decompress"],worker:LZMA_I["worker"];
 
   /**
    * @param node HTMLElement chained with the [`use:action` Element directive](https://svelte.dev/docs#use_action)
    * @param MountedState Action parameters defaulting to the state object derived from the path route handler
    */
   function appContextWrapper(node,MountedState) {
-    const {compress:c,decompress:d,worker:w} = connectLZMAWorker(window);
+    const {compress:c,decompress:d,worker:w} = connectLZMAWorker();
     [compress,decompress,worker] = [c,d,w]; // hoisting destructured variables to component's global variables
     const {inflate:{search:appMode,hash:hashToDecode}} = MountedState;
     let eCfg = {

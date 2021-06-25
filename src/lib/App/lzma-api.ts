@@ -1,25 +1,68 @@
-type compressionFnType = (string:string|ArrayBufferLike, mode:modeType, onFinish?:onFinishType, onProgress?:onProgressType) => void;
-type decompressionFnType = (buffer:ArrayBufferLike|string, onFinish?:onFinishType, onProgress?:onProgressType) => void;
-type modeType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-type onFinishType = (res:unknown,err:unknown) => void;
-type onProgressType = (percentage:number) => void;
-
-export const connectLZMAWorker = (window) => {
-  /** TODO: Perhaps create function to create a blob and build worker from blob
-   *  if the window is somehow unavailable, try->Window...catch->createBlob?
-   */
-  if (!window) throw "Window expected, unable to initialize";
-  const {compress:c,decompress:d,worker:w} = new window.LZMA("/lzma/lzma_worker.js");
-  const compress = asyncCompressionCall(c);
-  const decompress = asyncDecompressionCall(d);
-  return {compress,decompress,worker:w()};
+import {compress,decompress} from "./lzma";
+type SyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType) => number[];
+type AsyncCompressionFnType = (str:string|ArrayBufferLike, mode?:ModeType, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
+type AsyncCompression_I = (str:string) => Promise<string>;
+type SyncDecompressionFnType = (byte_arr:ArrayBufferLike|string) => string;
+type AsyncDecompressionFnType = (byte_arr:ArrayBufferLike|string, onFinish?:OnFinishType, onProgress?:OnProgressType) => Promise<string>;
+type AsyncDecompression_I = (byte_arr:string) => Promise<string>;
+type WorkerFnType = () => Worker;
+type ModeType = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+type OnFinishType = (res:unknown,err:unknown) => void;
+type OnProgressType = (percentage:number) => void;
+export interface LZMA_I {
+  compress:AsyncCompression_I;
+  decompress:AsyncDecompression_I;
+  worker:WorkerFnType;
+}
+interface LZMA_GENERATOR_I {
+  compress:SyncCompressionFnType;
+  decompress:SyncDecompressionFnType;
+  worker:WorkerFnType;
 }
 
-function asyncCompressionCall(compressionFn:compressionFnType):Function {
-  return (string=""):Promise<string> => {
+class LZMAInstanceGenerator implements LZMA_GENERATOR_I {
+  compress:SyncCompressionFnType;
+  decompress:SyncDecompressionFnType;
+  worker:WorkerFnType;
+  constructor(path_to_worker:string){
+    this.compress = compress;
+    this.decompress = decompress;
+    this.worker = () => {
+      let wkr = null;
+      try {
+        if (typeof Worker !== "undefined"){
+          wkr = new Worker(path_to_worker)
+        }
+      } catch (error) {
+        console.error(error)
+      } finally {
+        return wkr
+      }
+    }
+  }
+}
+
+let W = undefined;
+
+export const connectLZMAWorker = ():LZMA_I => {
+  W = window;
+  const LZMA = W.LZMA ? W.LZMA : LZMAInstanceGenerator;
+  const {compress:c,decompress:d,worker:w} = new LZMA("/lzma/lzma_worker.js");
+  const worker = w();
+  const compress = worker ? compressionCall(c,false) : compressionCall(c,true);
+  const decompress = worker ? decompressionCall(d,false) : decompressionCall(d,true);
+  return {compress,decompress,worker};
+}
+
+function compressionCall(compressionFn:SyncCompressionFnType|AsyncCompressionFnType,sync:Boolean) {
+  return (str=""):Promise<string> => {
     return new Promise (async(resolve,reject)=>{
       try {
-        compressionFn(string,9,(res:number[],err)=>{err ? reject(err) : resolve(fromArrayBufferToBase64(res))});
+        if (sync) {
+          const res = compressionFn(str,9);
+          resolve(fromArrayBufferToBase64(res));
+        }
+        else compressionFn(str,9,(res:number[],err)=>{err ? reject(err) : resolve(fromArrayBufferToBase64(res))});
       } catch (error) {
         reject(error)
       }
@@ -27,13 +70,18 @@ function asyncCompressionCall(compressionFn:compressionFnType):Function {
   }
 }
 
-function asyncDecompressionCall(decompressionFn:decompressionFnType){
-  return (buffer:ArrayBufferLike|Int8Array|string):Promise<string> => {
-    let b = typeof buffer === "string" ? fromBase64ToInt8Array(buffer) : buffer;
+function decompressionCall(decompressionFn:SyncDecompressionFnType|AsyncDecompressionFnType,sync:Boolean){
+  return (byte_arr:ArrayBufferLike|Int8Array|string):Promise<string> => {
+    let b = typeof byte_arr === "string" ? fromBase64ToInt8Array(byte_arr) : byte_arr;
     return new Promise (async(resolve,reject)=>{
       try {
         if (!b) reject("No buffer assigned for decompression");
-        decompressionFn(b,(res:string,err)=>{err ? reject(err) : resolve(res)})
+        if (sync) {
+          const res = decompressionFn(b);
+          resolve(typeof res === "string" ? res : "");
+
+        }
+        else decompressionFn(b,(res:string,err)=>{err ? reject(err) : resolve(res)})
       } catch (error) {
         reject(error)
       }
@@ -48,11 +96,11 @@ function fromArrayBufferToBase64(buffer){
   for (let i=0;i<length;i++){
       binaryOut += String.fromCharCode(byte_arr[i]);
   }
-  return window ? window.btoa(binaryOut) : btoa(binaryOut);
+  return W ? W.btoa(binaryOut) : btoa(binaryOut);
 }
 
 function fromBase64ToInt8Array(str){
-  let binary = window ? window.atob(str) : atob(str);
+  let binary = W ? W.atob(str) : atob(str);
   let length = binary.length;
   let buffer = new Int8Array(length);
   for (let i = 0; i < length; i++) {
