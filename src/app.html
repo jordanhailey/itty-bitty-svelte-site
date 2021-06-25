@@ -9,4 +9,8 @@
 	<body>
 		<div id="svelte">%svelte.body%</div>
 	</body>
+	<script src="/lzma/index.js">
+	/* This creates a global LZMA function on the window, which is used to
+	instantiate a dedicated Web Worker for all LZMA (de)compression calls */
+	</script>
 </html>

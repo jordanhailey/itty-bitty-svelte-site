@@ -5,9 +5,7 @@
     try {
       if (context.err) throw context.err
       output.props.loadingCtx.inflate = context.inflate
-      // Check context for certain props and do something before rendering
     } catch (err) {
-      // Handle errors from
       console.error(err);
     } finally {
       return output;
@@ -15,7 +13,7 @@
   };
 </script>
 <script lang="ts">
-  import App from "$lib/App.svelte";
+  import App from "$lib/App/App.svelte";
   export let loadingCtx = undefined;
 </script>
 <App state={loadingCtx}/>
