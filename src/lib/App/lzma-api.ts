@@ -49,18 +49,29 @@ export const connectLZMAWorker = ():LZMA_I => {
 }
 
 // Curried Promises
+class CompressionError extends Error{}
+class DecompressionError extends Error{}
 
 function compressionCall(compressionFn:SyncCompressionFnType|AsyncCompressionFnType,sync:Boolean) {
   return (str=""):Promise<string> => {
-    return new Promise (async(resolve,reject)=>{
+    return new Promise (async(resolve,_)=>{
       try {
         if (sync) {
           const res = compressionFn(str,9);
           resolve(fromArrayBufferToBase64(res));
         }
-        else compressionFn(str,9,(res:number[],err)=>{err ? reject(err) : resolve(fromArrayBufferToBase64(res))});
+        else compressionFn(str,9,(res:number[],err:ErrorEvent)=>{
+          if (err) {
+            // Ignore encoding issues, log to console and resolve
+            if (!/'btoa'/.test(err.message)) throw err;
+            console.warn(err)
+            resolve("")
+          }
+          const compressed = fromArrayBufferToBase64(res)
+          resolve(compressed)
+        });
       } catch (error) {
-        reject(error)
+        throw new CompressionError(error)
       }
     })
   }
@@ -68,18 +79,27 @@ function compressionCall(compressionFn:SyncCompressionFnType|AsyncCompressionFnT
 
 function decompressionCall(decompressionFn:SyncDecompressionFnType|AsyncDecompressionFnType,sync:Boolean){
   return (byte_arr:ArrayBufferLike|Int8Array|string):Promise<string> => {
-    let b = typeof byte_arr === "string" ? fromBase64ToInt8Array(byte_arr) : byte_arr;
-    return new Promise (async(resolve,reject)=>{
+    return new Promise (async(resolve,_)=>{
       try {
-        if (!b) reject("No buffer assigned for decompression");
+        let b = typeof byte_arr === "string" ? fromBase64ToInt8Array(byte_arr) : byte_arr;
+        if (!b) throw new Error("No buffer assigned for decompression");
         if (sync) {
           const res = decompressionFn(b);
           resolve(typeof res === "string" ? res : "");
-
         }
-        else decompressionFn(b,(res:string,err)=>{err ? reject(err) : resolve(res)})
+        else decompressionFn(b,(res:string,err:ErrorEvent)=>{
+          if (err) {
+            // Ignore truncated inputs, log to console and resolve
+            if (/truncated input|'atob'/.test(err.message)) null
+            else throw err;
+            console.warn(err)
+            resolve("");
+          }
+          resolve(res)
+        });
       } catch (error) {
-        reject(error)
+        console.log({error})
+        throw new DecompressionError(error)
       }
     })
   }
@@ -95,12 +115,12 @@ function fromArrayBufferToBase64(buffer){
   for (let i=0;i<length;i++){
       binaryOut += String.fromCharCode(byte_arr[i]);
   }
-  return globalObj ? globalObj.btoa(binaryOut) : btoa(binaryOut);
+  return globalObj?.btoa ? globalObj.btoa(binaryOut) : btoa(binaryOut);
 }
 
 function fromBase64ToInt8Array(str){
   // https://stackoverflow.com/questions/21797299/convert-base64-string-to-arraybuffer/21797381
-  let binary = globalObj ? globalObj.atob(str) : atob(str);
+  let binary = globalObj?.atob ? globalObj.atob(str) : atob(str);
   let length = binary.length;
   let buffer = new Int8Array(length);
   for (let i = 0; i < length; i++) {
