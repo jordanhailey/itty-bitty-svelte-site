@@ -60,7 +60,7 @@ import { tick } from "svelte";
     else {
       decompress(toDecode)
       .then(decodedStr => {
-          eCfg.editorContent = registerEditor("main",decodedStr) // hardcoding main id, in the future if more editors are required, this can be refactored
+          eCfg.editorContent = registerEditor("main",JSON.parse(decodedStr)) // hardcoding main id, in the future if more editors are required, this can be refactored
           editorConfig = eCfg;
         })
         .catch((err:ErrorEvent)=>{throw err})

@@ -38,6 +38,7 @@
     iA.strike = e.isActive("strike");
     iA.paragraph = e.isActive("paragraph");
     iA.code = e.isActive("code");
+    iA.codeBlock = e.isActive("codeBlock");
     iA.horizontalRule = e.isActive("horizontalRule");
     iA.bulletList = e.isActive("bulletList");
     iA.orderedList = e.isActive("orderedList");
@@ -182,6 +183,16 @@
       </button>
       {#if isBubbleMenu !== true}
       <button
+        data-selected={iA.codeBlock ? "true" : "false"}
+        id={isBubbleMenu ? "toggle_code_formatting_bubble" : "toggle_code_formatting_toolbar"}
+        class="main_only"
+        on:focus={becomesActiveDescendant}
+        title="Toggle Code Block"
+        aria-label="Toggle Code Block button."
+        on:click={editor.chain().focus().toggleCodeBlock().run()}>
+        <i class="ri-code-box-line"></i>
+      </button>
+      <!-- <button
         data-selected={iA.hardBreak ? "true" : "false"}
         id={isBubbleMenu ? "create_hard_break_bubble" : "create_hard_break_toolbar"}
         class="main_only"
@@ -190,7 +201,7 @@
         aria-label="Create Hard Break button."
         on:click={editor.chain().focus().setHardBreak().run()}>
         <i>{`<br>`}</i>
-      </button>
+      </button> -->
       <button
         data-selected={iA.horizontalRule ? "true" : "false"}
         id={isBubbleMenu ? "create_horizontal_rule_bubble"  : "create_horizontal_rule_toolbar"}

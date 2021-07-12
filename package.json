@@ -35,10 +35,13 @@
   "dependencies": {
     "@tiptap/core": "^2.0.0-beta.85",
     "@tiptap/extension-bubble-menu": "^2.0.0-beta.24",
+    "@tiptap/extension-code-block-lowlight": "^2.0.0-beta.32",
     "@tiptap/extension-heading": "^2.0.0-beta.14",
     "@tiptap/extension-mention": "^2.0.0-beta.61",
     "@tiptap/starter-kit": "^2.0.0-beta.81",
     "@tiptap/suggestion": "^2.0.0-beta.59",
+    "highlight.js": "^11.1.0",
+    "lowlight": "^1.20.0",
     "tippy.js": "^6.3.1"
   }
 }

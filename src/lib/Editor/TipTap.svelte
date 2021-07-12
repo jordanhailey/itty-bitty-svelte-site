@@ -4,7 +4,19 @@
   import { Editor as TipTapEditor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
   import BubbleMenu from '@tiptap/extension-bubble-menu';
+  import CodeBlockLowLight from '@tiptap/extension-code-block-lowlight';
+  import lowlight from 'lowlight';
   export let content = "";
+
+  const CustomBlockLowLight = CodeBlockLowLight.extend({
+    draggable: true,
+    addKeyboardShortcuts() {
+      return {
+        'Mod-Shift-e': () => this.editor.commands.toggleCodeBlock(),
+      }
+    },
+  })
+
   let editorContainer:any, editor:any, bubbleMenu:any, element:any, escapeMovesToEditor:Function;
   onMount(() => {
       editor = new TipTapEditor({
@@ -23,13 +35,16 @@
               interactive: true,
             }
           }),
+          CustomBlockLowLight.configure({
+            lowlight,
+          })
         ],
         onTransaction: (e) => {
           const {transaction} = e
           const {before} = transaction
           // force re-render so `editor.isActive` works as expected
           editor = editor
-          content = editor.state.doc.textContent ?  editor.getHTML() : ""
+          content = editor.state.doc.textContent ?  JSON.stringify(editor.getJSON()) : "";
           if (!/#/.test(before.textContent) && !editor.state.doc.textContent && editor.isActive("heading")) {
             editor.chain().focus().setParagraph().run() // reset from heading to paragraph
           }
