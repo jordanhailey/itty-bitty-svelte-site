@@ -3,6 +3,7 @@ lockfileVersion: 5.3
 specifiers:
   '@babel/core': ^7.13.0
   '@babel/preset-env': ^7.13.0
+  '@sveltejs/adapter-netlify': ^1.0.0-next.20
   '@sveltejs/adapter-static': ^1.0.0-next.13
   '@sveltejs/kit': next
   '@testing-library/jest-dom': ^5.11.0
@@ -32,6 +33,7 @@ specifiers:
 devDependencies:
   '@babel/core': 7.14.6
   '@babel/preset-env': 7.14.7_@babel+core@7.14.6
+  '@sveltejs/adapter-netlify': 1.0.0-next.20
   '@sveltejs/adapter-static': 1.0.0-next.13
   '@sveltejs/kit': 1.0.0-next.125_svelte@3.38.2
   '@testing-library/jest-dom': 5.14.1
@@ -1201,6 +1203,10 @@ packages:
       minimist: 1.2.5
     dev: true
 
+  /@iarna/toml/2.2.5:
+    resolution: {integrity: sha512-trnsAYxU3xnS1gPHPyU961coFyLkh4gAD/0zQ5mymY4yOZ+CYvsPqUbOFSw0aDM4y0tV7tiFxL/1XfXPNC6IPg==}
+    dev: true
+
   /@istanbuljs/load-nyc-config/1.1.0:
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
     engines: {node: '>=8'}
@@ -1428,6 +1434,13 @@ packages:
     resolution: {integrity: sha512-MZPUxrmFubI36XS1DI3qmI0YdN1gks62JtFZvxR67ljjSNCeK6U08Zx4msEWOXuofgqUt6zPHSi1H9fbjR/NRA==}
     dependencies:
       '@sinonjs/commons': 1.8.3
+    dev: true
+
+  /@sveltejs/adapter-netlify/1.0.0-next.20:
+    resolution: {integrity: sha512-glNbfvJ4wbARCfyFqpdwMiYGlQHaPPR4Hv/YpzaZGzPrLb+9/1Rf3+FNqE4g9zdX6MAesw8iLVQboaHjNZ8Hew==}
+    dependencies:
+      '@iarna/toml': 2.2.5
+      esbuild: 0.12.15
     dev: true
 
   /@sveltejs/adapter-static/1.0.0-next.13:
